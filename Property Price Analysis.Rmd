@@ -1,0 +1,321 @@
+---
+title: "A1 submission"
+author: "Paballo Sejanamane"
+date: '2023'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include = FALSE}
+library(tidyverse)
+library(tree)
+```
+### Prelimary steps:
+
+```{r, get data, include=FALSE}
+main_data<- read.csv("C:\\Users\\pabal\\Desktop\\Data Science\\A1\\A1_data.csv", header = TRUE, stringsAsFactors = TRUE)
+#Try and find the dimensions in the data set as it is important to verify I have the correct document
+dim(main_data) 
+
+#I need to see that the strings are all correct. however, I would not like to see the dimensions
+str(main_data) 
+set.seed(9)
+
+#Obtain my sample by using an index variable as my indicator, replace is false to draw a sample without replacement
+index<-sample(1:nrow(main_data), size = 2500, replace = FALSE)
+#Name the correctly sampled data in a variable called test_data as instructed
+test_data <- main_data[index,]
+#test_data #I would like to see the test data but I do not need it on my rendered file as it looks messy and is quite unnecessary to display if I am presenting to a client
+
+#Sort the data in ascending order:
+test_data_sorted <- test_data %>% arrange(Identifier)
+#test_data_sorted
+
+#Once the data is sorted in ascending order, take the 1st, 10th, 20th and 100th identifiers to verify on SunLearn 
+identifier_values <- test_data_sorted$Identifier[c(1, 10, 20, 100)]
+#identifier_values
+```
+
+### Question 1:
+```{r}
+mean(test_data$Price)
+```
+##### The average price of properties sold is R1 803 401
+
+
+### Question 2
+```{r}
+ggplot(test_data, aes(x = Price)) +
+  geom_histogram(binwidth = 500000, fill = "black")+  ggtitle("Histogram of the number of properties in different price ranges") + theme(plot.title = element_text(hjust = 0.5))
+#Citation: https://www.geeksforgeeks.org/how-to-change-position-of-ggplot-title-in-r/
+```
+
+##### Based on the histogram, the data is leftly skewed, indicating that most sold properties fare around R2 million and less sold properties cost more than R4 million. Furthermore, it seems that houses around/near the R1.5 million mark, sold the most, this might be a good price for sellers to sell their houses and increase the chances of a sale. 
+
+
+
+### Question 3
+```{r}
+
+ggplot(test_data, aes(x = Type, fill = Type), ) +
+  geom_bar() +ggtitle("Bar Chart Displaying Different Property Types") + theme(plot.title = element_text(hjust = 0.5))
+```
+
+##### This bar chart shows that most sold properties are single storey, then double story, then properties in estates then duplexes 
+
+### Question 4
+```{r, include=FALSE}
+test_data$Price_in_millions <- test_data$Price / 1e6 #Change the price from the scientific notation to digits so that it is easier to read
+```
+
+```{r}
+ggplot(test_data, aes(x = Type, y = Price_in_millions, fill = Type)) +
+  geom_boxplot() +
+  ggtitle("Distribution of Price according to the property Type") +
+  ylab("Price (in millions)") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+## Citation: https://www.statology.org/side-by-side-boxplot-in-r/
+```
+
+##### Double storey properties have the highest median price in millions, then estates, then single storey properties, followed by duplexes. 
+##### This makes some sense as double storey houses are normally quite big, so they would cost more, estate properties often have their own estate maintenance costs and one pays more for security. Finally, single stories may be expensive depending on the area one lives in or the size of the house, which could explain why the data is a bit skewed to the pricier side, but it would not be more than a double storey house. Lastly, duplex properties would be cheapest as there is no security company involved and duplexes are normally smaller in size compared to double storey, single story and properties in estates.
+
+### Question 5
+
+```{r,}
+test_data %>%
+  group_by(Area) %>%
+  summarise(Number_of_properties = n(),
+            Average_price_of_properties = mean(Price)) %>%
+  arrange(desc(Number_of_properties))
+```
+
+##### Based on the table, there seem to be more properties selling in residential areas (around 2475) and the average price is quite high, this could indicate that that residential properties are in high demand. 
+##### The lowest number of properties sold is tied between Agricultural areas and Industrial areas. This may show that for this specific agent or town, their clients do not demand agricultural and industrial areas and clients would pay less money to stay in agricultural areas compared to industrial areas. 
+##### However, even though commerical areas are the second highest number of properties sold, the difference paid for properties in industrial areas and commercial areas is not that big indicating that maybe customers prefer commercial areas to industrial areas or perhaps industrial area properties cost a lot more than commercial properies
+##### Furthermore, the number of properties sold between agricultural areas and industrial areas is the same, but the average price of properties sold in industrial areas is more, this could indicate that the properties in industrial areas are more expensive
+
+### Question 6.1
+```{r}
+sum(is.na(test_data$Street_front))
+```
+##### There seems to be 413 missing values in the _Street_front_ variable. This is quite a lot for a data set
+
+### Question 6.2
+```{r, results = 'hide'}
+cordata <- na.omit(test_data, cols = "Street_front")
+```
+
+```{r, include=FALSE}
+sum(is.na(cordata))
+#Citation: https://bookdown.org/rwnahhas/IntroToR/exclude-observations-with-missing-data.html and https://bookdown.org/yihui/rmarkdown-cookbook/hide-one.html
+```
+
+### Question 6.3
+```{r}
+cor_data <-cor(cordata$Street_front, cordata$Size)
+```
+```{r}
+round(cor_data, 3)
+```
+
+
+##### It seems that Street front and Size of property have a moderately strong relationship. Indicating that the bigger the size of the property, the bigger the street front and vice versa
+
+### Question 6.4
+```{r}
+ggplot(data = cordata, aes(x = Street_front, y = Size)) +
+  geom_point(position = "jitter") +
+  labs(x = "Street Front", y = "Size", title = "Scatter plot of Size vs Street Front") + theme ( plot.title = element_text(hjust = 0.5))
+```
+ 
+##### There are a few outliers present for size front and for the size of property. 
+##### Specifically with size that go above 3000 and street fronts above 40. I would opt to replace the outliers with more values within a certain range, for example, values over 50 for Street Fronts, would be set to 50. A similar approach would be taken for the size of the property.
+##### An extreme case would be to remove the outliers as a whole but this would also result in a loss of information. It just depends whether, the agency is interested in knowing if the size of the plot and the street front result in a sale and which area and clients they should target regarding this
+
+### Question 7
+```{r}
+summary(test_data$Water)
+ggplot(test_data, aes(x = Water)) +
+  geom_histogram(binwidth = 1, fill = "blue") +
+  ggtitle("Histogram of Water") + theme ( plot.title = element_text(hjust = 0.5))
+
+```
+
+##### The mean of the data suggests that 50% of households are connected to supplied with water by the municipality and from the histogram, more than 50% or more water supply in over 2000 properties are supplied by the municipality.
+
+### Question 8.1
+```{r}
+newdata <- test_data %>%
+  mutate(
+    transport_proximity = ifelse(BusyStreet == 1 | NearRail == 1, 1, 0),
+    not_renovated = ifelse(Year_Built == Year_Renov, TRUE, FALSE)
+  )
+```
+
+### Question 8.2
+```{r}
+sum(newdata$transport_proximity)
+```
+
+### Question 8.3
+```{r}
+sum(!newdata$not_renovated)
+```
+
+### Question 8.4
+```{r}
+newdata$Price_in_millions <- newdata$Price / 1e6 
+ggplot(newdata, aes(x = not_renovated, y = Price_in_millions, fill = not_renovated)) +
+  geom_boxplot() +
+  labs(x = "Renovated", y = "Price_in_millions") +
+  ggtitle("Price vs. Renovation Status") + theme(plot.title = element_text(hjust = 0.5))
+```
+
+##### I believe that renovating a property does have an impact on the price. This is seen because the median price of the sold renovated properties is higher than the median price of the properties that are not renovated. 
+
+### Question 9
+
+```{r}
+# Boxplot for properties with different numbers of braais/fireplaces
+test_data$Price_in_millions <- test_data$Price / 1e6
+ggplot(test_data, aes(x = as.factor(Braais_Fireplaces), y = Price_in_millions, fill = Braais_Fireplaces)) +
+  geom_boxplot() +
+  labs(x = "Number of Braais/Fireplaces", y = "Price (in millions)") +
+  ggtitle("Price vs. Number of Braais/Fireplaces") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+##### Given the box plot shown in the diagram, places without braais/fireplaces sold for less than those with fireplaces(looking at medians and outliers). However, places with 1 or 2 sold for more as the median for them is greater than places without braai arreas, one can see that the properties with 2 fireplaces sold more than one and the data was more even in those areas. The properties with 3 braai areas seems to have the same median price for properties sold, however, the data seems more skewed to the more expensive properties sold and there are no outliers in this data. Furthermore, even though there are more outliers for properties with no braai or fireplace area, the maximum price in millions is still less than that of places with braais or fireplaces. In addition, as the number of braais and fire places incerases (except for the 4 braais/fire places) the outliers increase, including the maximum price in millions. Thus I can conclude that areas with braais and fireplaces seem to sell at higher prices. One should note that while the property with 4 braai places only shows one price, this price is greater than all the median prices of properties with no braai area/fireplace or less than 4 braai areas/fireplaces. 
+
+```{r}
+test_data$Price_in_millions <- test_data$Price / 1e6
+ggplot(test_data, aes(x = Pool, y = Price_in_millions, fill = Pool)) +
+  geom_boxplot() +
+  labs(x = "Pool", y = "Price (in millions)") +
+  ggtitle("Price vs. Presence of Pool") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+##### Looking at the boxplot, it shows that the median price of the properties sold with pools had a greater median price than the properies that did not have pools, this was also significantly greater. This gives the impression that having pools increases the property price by a significant amount. Furthermore, even the outliers for the properties with pools boasts a greater amount of money compared to properties without a pool.
+
+#### Question 10
+
+```{r}
+test_data$Date_sold <- make_date(year = test_data$Year_sold, month = test_data$Month_sold)
+#Citation: https://datacornering.com/how-to-join-year-month-and-day-into-a-date-in-r/#:~:text=The%20easiest%20way%20to%20combine,make_date%20from%20the%20lubridate%20package.&text=In%20this%20scenario%2C%20if%20you,day%20number%20column%20with%201.
+
+```
+
+
+### Question 11
+#### Question 11.1
+##### I believe the **Area** is necessary to consider when predicting house prices. I believe that the rank of highest sold property to lowest sold property would be:
+1. Residential areas (as everyone needs a home so there will always be a market there)
+2. Commercial (since businesses keep the economy afloat, and the rates on a building are not cheap. However, this would depend on the city/town as smaller towns would not have a big business hub)
+3.Industrial properties
+4. Agricultural properties (the upkeep of a farm is quite tedious and I do not believe most people would want to incur this cost unless they had the resources and the skill. Furthermore, it is quite risky and unstable to buy such a property as it is dependent on factors out of one's control, weather for example and no two seasons are the same)
+
+##### Furthermore, the **size of the property** could be a factor that contributes to prices. I assume expensive properties are bigger and smaller properties are cheaper.
+
+##### The **type of property** (double storey, single storey, estate or duplex) could affect the prices. For example, assume that the estates would cost more as there is added security and estate prices to upkeep the estate as compared to the duplexes and in the same way. I predict that the rank of most expensive to least expensive properties sold would go as follows:
+1. Double storey properties
+2. Single storey properties
+3. Estate properties
+4. Duplex properties
+
+##### The **condition** of the properties may affect the price of the propery. I believe that a well kept place, in good condition will be more expensive than a place that is not in good condition. Thus, properties with rankingings closer to 10  would be more appealing to a buyer, thus more expensive and properties closer to 1 would be less attractive to any buyer and be sold for less
+
+##### Lastly, I believe that the **year built** will affect the price. I assume that the older the house, the less modern/appealing and I suspect that customers will not want to buy houses that are not modern 
+
+#### Question 11.2
+```{r}
+test_data%>%
+  group_by(Area) %>%
+  summarise(Average_price = mean(Price)) %>%
+  ggplot(aes(x = Area, y = Average_price, fill = Area)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Average Property Price by Area", x = "Area", y = "Average Price") + theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+##### The results coincide with the my supposition in question 11.1. This is shown in the fact that the count for average prices for residential areas is the highest bar on the chart.I believe this supports my stance that people will always need houses and therefore housing will count a lot.Furthermore, commercial properties is second highest sold, then indiustrial then agricultural.  
+
+```{r}
+ggplot(test_data, aes(x = Size, y = Price_in_millions)) +
+  geom_point() +
+  labs(title = "Property Price vs. Size", x = "Size", y = "Price (in millions)") + theme(plot.title = element_text(hjust = 0.5))
+
+
+```
+
+##### This plot shows that smaller sizes tend to be cheaper than bigger houses. This result aligns with my initial expectation for size and price
+
+
+```{r}
+test_data %>%
+ group_by(Type) %>%
+  summarise(Average_price = mean(Price)) %>%
+  ggplot(aes(x = Type, y = Average_price, fill = Type)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + theme(plot.title = element_text(hjust = 0.5)) +
+  labs(title = "Average Property Price by Type", x = "Type", y = "Average Price")
+```
+
+##### From the bar chart, it clearly states that the most expensive places to least expensive is double storey properties, followed by estates, single storey properties then duplexes are the least expensive. This results aligns with my supposition. 
+```{r}
+test_data$Price_in_millions <- test_data$Price / 1e6
+test_data %>%
+  group_by(Condition) %>%
+  summarise(Average_price = mean(Price_in_millions)) %>%
+  ggplot(aes(x = Condition, y = Average_price, fill = Condition)) +
+  geom_bar(stat = "identity") + theme(plot.title = element_text(hjust = 0.5)) +
+  labs(title = "Average Property Price by Condition", x = "Condition", y = "Average Price (in millions)")
+```
+
+##### The general trend of this histogram is that the better the condition, the more expensive the property, this confirms my original hypothesis. There seems to be a dip between 7.5 and 10.0, this could be that the properties in that area were in an unfavourable area or they were not renovated or have been older houses. 
+```{r}
+test_data$Price_in_millions <- test_data$Price / 1e6
+
+ggplot(test_data, aes(x = Year_Built, y = Price_in_millions)) +
+  geom_point(position = "jitter") + 
+  theme(plot.title = element_text(hjust = 0.5)) + geom_smooth(formula = y ~ x, method = "loess") +
+  labs(title = "Property Price vs. Year Built", x = "Year Built", y = "Price (in millions)")
+#Citation: https://stackoverflow.com/questions/66164964/how-to-turn-off-the-message-geom-smooth-using-method-loess-and-formula
+```
+
+##### The plot corresponds with my suspision as the smooth curve shows that the older houses sold for less money. The newer houses sold for more. This also shows because the points are more dense in the latter years.
+
+### Question 12
+
+#### Question 12.1
+```{r}
+formula<- Price_cat ~ Area + Type + Size + Corner + Bathrooms + Bedrooms + KitchenCondition + Braais_Fireplaces + Garages + Driveway + Pool
+
+
+tree_model <- tree(formula, data = test_data)
+
+summary(tree_model)
+```
+
+#### Question 12.2
+```{r}
+plot(tree_model)
+text(tree_model)
+```
+
+#### Question 12.3
+
+##### The misclasification error is: 0.3025 
+
+
+#### Question 12.4
+
+##### Considering the person has 2 garages, they would fall into the right hand side of the tree, their garages being more than 2.5, they would be on the fire place side and the fact that the number of braais or fire places is more than 0.5, this property would be considered **high** and I would recommend that it be part of the properties that are sold for R2.1 million or more
+
